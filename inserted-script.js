@@ -1,5 +1,3 @@
-/* eslint-disable no-undef */
-
 // Prevent multiple injections
 if (!window.__COMET_INJECTED__) {
   window.__COMET_INJECTED__ = true;

@@ -66,8 +66,12 @@ const browserRunner = async (startingUrl = null) => {
     await permissionsManager.grantForTarget(pageTarget);
 
     // Get DevTools URLs and WebSocket information
-    const { fullUrl, pageWsUrl, browserWsUrl } =
+    const { fullUrl, pageWsUrl, browserWsUrl, port } =
       await devToolsInfo.getPageInfo();
+
+    // Extract session ID from page WebSocket URL
+    // Format: ws://localhost:PORT/devtools/page/SESSION_ID
+    const sessionId = pageWsUrl.split('/').pop();
 
     // Register scripts for new documents
     await scriptInjector.registerForNewDocuments();
@@ -79,7 +83,7 @@ const browserRunner = async (startingUrl = null) => {
     await pageEventHandler.performInitialInjection();
 
     // Setup proxy to access DevTools frontend from local network
-    const proxyUrl = await createProxy(browserInstance.port, fullUrl);
+    const proxyUrl = await createProxy(port, fullUrl);
     console.log(`🌐 DevTools accessible on local network: ${proxyUrl}`);
 
     console.log({ fullUrl, pageWsUrl, proxyUrl });
@@ -88,6 +92,9 @@ const browserRunner = async (startingUrl = null) => {
       wsUrl: pageWsUrl, // Return the page WebSocket URL, not browser
       browserWsUrl, // Also return browser WebSocket for reference
       proxyUrl, // Return the proxy URL for local network access
+      sessionId, // Return session ID for clipboard bridge
+      cdpClient: protocol, // Return CDP client for clipboard bridge
+      pageTarget, // Return page target
     };
   } catch (error) {
     console.error('Error launching browser:', error);
