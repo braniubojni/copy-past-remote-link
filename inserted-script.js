@@ -2,15 +2,27 @@
 if (!window.__COMET_INJECTED__) {
   window.__COMET_INJECTED__ = true;
 
+  // Initialize event queue for server communication
+  if (!window.__SERVER_EVENT_QUEUE__) {
+    window.__SERVER_EVENT_QUEUE__ = [];
+  }
+
+  // Event emitter for client-to-server communication
+  window.emitToServer = function (eventName, data) {
+    const event = {
+      name: eventName,
+      data: data,
+      timestamp: Date.now(),
+    };
+
+    window.__SERVER_EVENT_QUEUE__.push(event);
+    console.log('📤 Emitted to server:', eventName, data);
+  };
+
   let inputRef = null;
 
   document.addEventListener('keydown', async (event) => {
     try {
-      console.log(event.key, 'event.key', {
-        ctrl: event.ctrlKey,
-        meta: event.metaKey,
-      });
-
       // Check if Ctrl or Meta (Cmd on Mac) is pressed
       const modifierKey = event.ctrlKey || event.metaKey;
 
@@ -23,6 +35,15 @@ if (!window.__COMET_INJECTED__) {
             event.preventDefault();
             const inpJsPath = window.DOMPath.fullQualifiedSelector(inputRef);
             window?.duglas(inpJsPath);
+
+            // Emit paste event to server
+            window.emitToServer('paste', {
+              url: window.location.href,
+              element: inputRef ? inputRef.tagName : null,
+              timestamp: new Date().toISOString(),
+            });
+
+            console.log('✓ Paste triggered');
             break;
           }
 
@@ -43,15 +64,36 @@ if (!window.__COMET_INJECTED__) {
           }
 
           case 'c': {
-            // Copy (allow default behavior but log it)
-            console.log('✓ Copy triggered');
+            // Copy - emit event to server
+            const selectedText = window.getSelection().toString();
+            // Emit copy event to server
+            window.emitToServer('copy', {
+              text: selectedText,
+              url: window.location.href,
+              element: inputRef.tagName,
+              timestamp: new Date().toISOString(),
+            });
+
+            console.log('✓ Copy triggered', {
+              textLength: selectedText.length,
+            });
             // Don't prevent default - let browser handle copy
             break;
           }
 
           case 'x': {
-            // Cut (allow default behavior but log it)
-            console.log('✓ Cut triggered');
+            // Cut - emit event to server
+            const selectedText = window.getSelection().toString();
+
+            // Emit cut event to server
+            window.emitToServer('cut', {
+              text: selectedText,
+              url: window.location.href,
+              element: inputRef.tagName,
+              timestamp: new Date().toISOString(),
+            });
+
+            console.log('✓ Cut triggered', { textLength: selectedText.length });
             // Don't prevent default - let browser handle cut
             break;
           }
