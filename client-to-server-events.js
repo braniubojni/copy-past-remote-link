@@ -203,8 +203,12 @@ async function setupClientToServerEvents(cdpClient) {
     console.log(
       '╠═══════════════════════════════════════════════════════════╣'
     );
-    console.log(`║  Text: ${data.text.substring(0, 40).padEnd(40)} ║`);
-    console.log(`║  URL:  ${data.url.substring(0, 40).padEnd(40)} ║`);
+    console.log(
+      `║  Text: ${(data.text ? data.text.substring(0, 40) : '').padEnd(40)} ║`
+    );
+    console.log(
+      `║  URL:  ${(data.url ? data.url.substring(0, 40) : '').padEnd(40)} ║`
+    );
     console.log(
       `║  Time: ${new Date(timestamp).toLocaleTimeString().padEnd(40)} ║`
     );
