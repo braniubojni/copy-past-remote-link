@@ -7,6 +7,7 @@ const PageEventHandler = require('./lib/page-event-handler');
 const CHROME_FLAGS = require('./lib/chrome-flags');
 const createProxy = require('./lib/proxy');
 const { ServerEventListener } = require('./lib/client-to-server-events');
+const ClipboardBridge = require('./lib/clipboard-bridge');
 
 const browserRunner = async (startingUrl = null) => {
   if (!startingUrl) {
@@ -61,6 +62,9 @@ const browserRunner = async (startingUrl = null) => {
       permissionsManager
     );
 
+    // NEW: Initialize Clipboard Bridge
+    const clipboardBridge = new ClipboardBridge(protocol);
+
     // Get the target info to grant permissions
     const targets = await Target.getTargets();
     const pageTarget = targets.targetInfos.find((t) => t.type === 'page');
@@ -79,16 +83,33 @@ const browserRunner = async (startingUrl = null) => {
     // Perform initial script injection
     await pageEventHandler.performInitialInjection();
 
+    // NEW: Inject clipboard bridge client script
+    await clipboardBridge.injectClientScript();
+
     // Setup server event listener for client-to-server communication
     const serverEvents = new ServerEventListener(protocol);
 
     // Register event listeners for copy/cut events
     serverEvents.on('copy', (data, timestamp) => {
-      // Here you can do something with the copied text
+      // Automatically sync copied text to clipboard bridge
+      if (data.text) {
+        clipboardBridge.setClipboard(data.text);
+        console.log(
+          `📋 Synced copied text to clipboard: "${data.text.substring(
+            0,
+            30
+          )}..."`
+        );
+      }
     });
 
     serverEvents.on('cut', (data) => {
-      // Handle cut event if needed
+      if (data.text) {
+        clipboardBridge.setClipboard(data.text);
+        console.log(
+          `📋 Synced cut text to clipboard: "${data.text.substring(0, 30)}..."`
+        );
+      }
     });
 
     console.log('✓ Server event listener initialized');
@@ -98,12 +119,15 @@ const browserRunner = async (startingUrl = null) => {
     console.log(`🌐 DevTools accessible on local network: ${proxyUrl}`);
 
     console.log({ fullUrl, pageWsUrl, proxyUrl });
+
     return {
       fullUrl,
-      wsUrl: pageWsUrl, // Return the page WebSocket URL, not browser
-      browserWsUrl, // Also return browser WebSocket for reference
-      proxyUrl, // Return the proxy URL for local network access
-      serverEvents, // Return server events instance for cleanup
+      wsUrl: pageWsUrl,
+      browserWsUrl,
+      proxyUrl,
+      serverEvents,
+      clipboardBridge, // NEW: Return clipboard bridge
+      protocol, // NEW: Return protocol for direct access
     };
   } catch (error) {
     console.error('Error launching browser:', error);
